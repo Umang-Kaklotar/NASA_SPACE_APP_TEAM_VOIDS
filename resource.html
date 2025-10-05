@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Resources - Exoplanet Discovery</title>
+    
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&family=Orbitron:wght@700&display=swap" rel="stylesheet">
+    
+    <style>
+        /* --- GLOBAL & BACKGROUND STYLES (from your theme) --- */
+        body {
+            background-color: #010101; 
+            font-family: 'Inter', sans-serif;
+            color: white;
+            margin: 0;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+
+        #canvas-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+        }
+
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+        
+        main {
+            padding: 140px 20px 60px; /* Added bottom padding */
+            position: relative;
+            z-index: 1;
+        }
+
+        /* --- TOP BAR & NAVIGATION (from your theme) --- */
+        .top-bar {
+            position: fixed;
+            margin-top: 15px;
+            left: 0;
+            width: 100%;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px 40px;
+            box-sizing: border-box;
+            z-index: 1000;
+            background: linear-gradient(to bottom, rgba(0, 0, 0, 0.9) 0%, rgba(0, 0, 0, 0.0) 100%);
+        }
+
+        .top-left {
+            display: flex; 
+            align-items: center;
+            flex: 1;
+        }
+
+        .top-left img {
+            height: 100px; 
+            margin-right: 10px;
+        }
+        
+        nav#main-nav {
+            display: flex;
+            justify-content: center;
+            flex: 2;
+            gap: 30px;
+            font-size: 1.1em;
+            font-weight: 500;
+        }
+
+        nav#main-nav a {
+            color: #f9f8f6;
+            text-decoration: none;
+            padding: 5px 10px;
+            border-radius: 4px;
+            transition: all 0.3s ease;
+            text-shadow: 0 0 5px rgba(255, 165, 0, 0.5);
+            border-bottom: 2px solid transparent; 
+        }
+
+        nav#main-nav a:hover, nav#main-nav a.active { 
+            color: #000000;
+            text-shadow: 0 0 10px rgb(4, 0, 255);
+            border-bottom: 2px solid #1d4ed8;
+            background-color: blue;
+            
+        }
+        
+        .top-right {
+            flex: 1;
+        }
+
+        /* --- MAIN CONTENT & CARD STYLES (adapted from your theme) --- */
+        .title { 
+            font-size: 2.5rem; 
+            margin-bottom: 40px; 
+            color: #fff; 
+            text-transform: uppercase; 
+            letter-spacing: 2px; 
+            text-align: center;
+            font-family: 'Orbitron', sans-serif; /* Use the sci-fi font for titles */
+        }
+        
+        .card-container { 
+            display: flex; 
+            flex-wrap: wrap; 
+            justify-content: center; 
+            gap: 30px; 
+            padding: 20px;
+            max-width: 1200px;
+            margin: 0 auto 60px auto; /* Add bottom margin */
+        }
+
+        .card { 
+            background: rgba(10, 10, 25, 0.2);
+            backdrop-filter: blur(10px); 
+            border-radius: 15px; 
+            padding: 25px; 
+            width: 320px; /* Slightly wider for more content */
+            text-align: left; /* Align text left for readability */
+            border: 1px solid rgba(38, 151, 255, 0.3);
+            box-shadow: 0 0 15px rgba(38, 151, 255, 0.4);
+            transition: all 0.4s ease;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+            border-color: rgba(38, 151, 255, 0.6);
+            box-shadow: 0 0 25px rgba(38, 151, 255, 0.7);
+        }
+
+        .card h3 { 
+            margin: 0 0 15px 0; 
+            font-size: 1.4rem; 
+            color: #e6f1ff;
+        }
+
+        .card p {
+            font-size: 0.95rem;
+            color: #ccc;
+            line-height: 1.5;
+            flex-grow: 1; /* Pushes footer to the bottom */
+            margin-bottom: 25px;
+        }
+        
+        /* --- NEW STYLES FOR RESOURCE BUTTONS --- */
+        .card-footer {
+            display: flex;
+            gap: 10px;
+            margin-top: auto; /* Aligns footer to the bottom */
+        }
+
+        .btn {
+            text-decoration: none;
+            padding: 10px 15px;
+            border-radius: 5px;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            text-align: center;
+            flex-grow: 1;
+        }
+
+        .btn-primary {
+            background-color: #2600ff;
+            color: #fff;
+            border: 1px solid #2600ff;
+        }
+        .btn-primary:hover {
+            background-color: transparent;
+            color: #2600ff;
+        }
+
+        .btn-secondary {
+            background-color: transparent;
+            border: 1px solid rgba(38, 151, 255, 0.5);
+            color: rgba(255, 255, 255, 0.8);
+        }
+        .btn-secondary:hover {
+            background-color: rgba(38, 151, 255, 0.2);
+            border-color: rgba(38, 151, 255, 0.8);
+            color: #fff;
+        }
+        
+        /* --- FOOTER STYLES (from your theme) --- */
+        .footer { 
+            background: var(--footer-bg, rgba(10, 25, 47, 0.8));
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            padding: 1rem 2rem;
+            color: var(--footer-text, #e6f1ff);
+            font-family: 'Inter', sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            position: relative; /* Ensure it's above the canvas */
+            z-index: 1;
+        }
+        .footer-container { 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; 
+            max-width: 1100px; 
+            width: 100%; 
+        }
+        .footer-left p { 
+            margin: 0; 
+            font-size: 1rem;
+            font-weight: 400; 
+        }
+        .footer-right { 
+            display: flex; 
+            align-items: center; 
+            gap: 1rem; 
+        }
+        .footer-icon { 
+            width: 24px; 
+            height: 24px; 
+            filter: invert(1); 
+            opacity: 0.8;
+            transition: opacity 0.3s ease, transform 0.3s ease;
+        }
+        .footer-right a:hover .footer-icon {
+            opacity: 1;
+            transform: scale(1.15) translateY(-2px);
+        }
+
+        /* --- RESPONSIVE ADJUSTMENTS --- */
+        @media (max-width: 1024px) {
+            nav#main-nav { display: none; } /* Hide nav on tablets/mobile for simplicity */
+        }
+        @media (max-width: 600px) {
+            .top-bar { padding: 15px 20px; }
+            .top-left img { height: 80px; }
+            .title { font-size: 1.8rem; }
+            .footer-container {
+                flex-direction: column;
+                gap: 1rem;
+            }
+            .footer-left { order: 2; }
+            .footer-right { order: 1; }
+        }
+
+    </style>
+</head>
+<body>
+    <div id="canvas-container">
+        <canvas id="star-canvas"></canvas>
+    </div>
+
+    <header class="top-bar">
+        <div class="top-left">
+            <!-- Make sure 'nasa logo.png' is in the correct path -->
+            <img src="images/nasa logo.png" alt="NASA Space App Challenge Logo"> 
+        </div>
+        
+        <nav id="main-nav">
+            <a href="index.html" class="nav-link">Home</a>
+            <a href="predict.html" class="nav-link">Prediction</a>
+            <a href="explore.html" class="nav-link">Explore</a>
+            <a href="about.html" class="nav-link">About Us</a>
+            <a href="resources.html" class="nav-link active">Resources</a> <!-- This is the active page now -->
+        </nav>
+        
+        <div class="top-right"></div>
+    </header>
+
+    <main>
+        <h2 class="title">Datasets & Archives</h2>
+        <div class="card-container">
+            <!-- KOI Card -->
+            <div class="card">
+                <h3>Kepler Objects of Interest (KOI)</h3>
+                <p>The cumulative catalog of planet candidates from NASA's Kepler mission, vital for statistical studies of exoplanet populations.</p>
+                <div class="card-footer">
+                    <a href="https://exoplanetarchive.ipac.caltech.edu/cgi-bin/TblView/nph-tblView?app=ExoTbls&config=cumulative" target="_blank" class="btn btn-primary">Access the Data</a>
+                    <a href="../Models & Test CSV Fiels/KOI_Test.csv" download="KOI_Test.csv" class="btn btn-secondary">Test CSV</a>
+                </div>
+            </div> 
+            <!-- TOI Card -->
+            <div class="card">
+                <h3>TESS Objects of Interest (TOI)</h3>
+                <p>A catalog of planet candidates from the TESS mission, focusing on identifying exoplanets around bright, nearby stars for follow-up studies.</p>
+                <div class="card-footer">
+                    <a href="https://exoplanetarchive.ipac.caltech.edu/cgi-bin/TblView/nph-tblView?app=ExoTbls&config=TOI" target="_blank" class="btn btn-primary">Access the Data</a>
+                    <a href="#" class="btn btn-secondary">Test CSV</a>
+                </div>
+            </div>
+            <!-- K2 Card -->
+            <div class="card">
+                <h3>K2 Planets and Candidates</h3>
+                <p>Data from Kepler's second mission (K2), which expanded the search for exoplanets to different fields of view along the ecliptic plane.</p>
+                <div class="card-footer">
+                    <a href="https://exoplanetarchive.ipac.caltech.edu/cgi-bin/TblView/nph-tblView?app=ExoTbls&config=k2pandc" target="_blank" class="btn btn-primary">Access the Data</a>
+                    <a href="#" class="btn btn-secondary">Test CSV</a>
+                </div>
+            </div>
+        </div>
+        
+        <h2 class="title">Foundational Research</h2>
+        <div class="card-container">
+            <!-- Paper 1 Card -->
+            <div class="card">
+                <h3>Exoplanet Detection Using ML</h3>
+                <p>An overview of various machine learning techniques applied to photometric data for the automated detection and classification of exoplanets.</p>
+                <div class="card-footer">
+                    <a href="https://arxiv.org/abs/1804.09028" target="_blank" class="btn btn-primary">Read on arXiv</a>
+                </div>
+            </div>
+            <!-- Paper 2 Card -->
+            <div class="card">
+                <h3>Assessment of Ensemble-Based ML</h3>
+                <p>A comparative study evaluating the performance of Random Forest, Gradient Boosting, and other ensemble methods for identifying exoplanet signals.</p>
+                <div class="card-footer">
+                    <a href="https://www.mdpi.com/2076-3417/11/15/7133" target="_blank" class="btn btn-primary">Read on MDPI</a>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-container">
+        <div class="footer-left">
+          <p>&copy; 2025 NASA Space Apps Challenge</p>
+        </div>
+        <div class="footer-right">
+          <a href="https://github.com/Prathamesh603" target="_blank" aria-label="Visit Prathamesh's GitHub profile">
+            <img src="https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/github.svg" alt="GitHub" class="footer-icon">
+          </a>
+          <a href="https://www.linkedin.com/in/prathamesh-rajput-5364802b6/" target="_blank" aria-label="Visit Prathamesh's LinkedIn profile">
+            <img src="https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/linkedin.svg" alt="LinkedIn" class="footer-icon">
+          </a>
+        </div>
+      </div>
+    </footer>
+
+    <!-- Three.js Starfield Script (from your theme) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script>
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer({ canvas: document.querySelector('#star-canvas'), alpha: true });
+        renderer.setPixelRatio(window.devicePixelRatio);
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        camera.position.setZ(30);
+        const starGeometry = new THREE.BufferGeometry();
+        const starCount = 6000;
+        const positions = new Float32Array(starCount * 3);
+        for (let i = 0; i < starCount * 3; i++) {
+            positions[i] = (Math.random() - 0.5) * 2000;
+        }
+        starGeometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+        const starMaterial = new THREE.PointsMaterial({ color: 0xffffff, size: 0.7, transparent: true });
+        const starField = new THREE.Points(starGeometry, starMaterial);
+        scene.add(starField);
+        function animate() {
+            requestAnimationFrame(animate);
+            starField.rotation.x += 0.0001;
+            starField.rotation.y += 0.0001;
+            renderer.render(scene, camera);
+        }
+        animate();
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+    </script>
+</body>
+</html>
+

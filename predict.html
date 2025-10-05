@@ -1,0 +1,852 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <title>Exoplanet Classifier</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&family=Orbitron:wght@700&display=swap" rel="stylesheet">
+    
+    <style>
+        /* --- Base Theme --- */
+        body {
+            background-color: #010101; 
+            font-family: 'Inter', sans-serif;
+            color: #E6F1FF; /* Light blueish-white for better contrast */
+            margin: 0;
+            min-height: 100vh;
+        }
+
+        /* Starry background */
+        #canvas-container {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: -1;
+        }
+        canvas { display: block; width: 100%; height: 100%; }
+
+        /* --- Top Bar & Navigation (UPDATED) --- */
+        .top-bar {
+            position: fixed; top: 0; left: 0; width: 100%;
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 20px 40px; box-sizing: border-box; z-index: 1000;
+            background: linear-gradient(to bottom, rgba(0, 0, 0, 0.9) 0%, rgba(0, 0, 0, 0.0) 100%);
+            margin-top: 15px; /* Added from new style */
+        }
+        .top-left { /* Added from new style */
+            display: flex; 
+            align-items: center;
+            flex: 1;
+        }
+        .top-right { /* Added from new style */
+            flex: 1;
+        }
+        .top-left img { /* Added from new style */
+            height: 100px; 
+            margin-right: 10px;
+        }
+        
+        nav#main-nav { 
+            display: flex; gap: 30px; font-size: 1.1em; font-weight: 500; 
+            justify-content: center; /* Added from new style */
+            flex: 2; /* Added from new style */
+        }
+        nav#main-nav a {
+            color: #f9f8f6; text-decoration: none; padding: 5px 10px; border-radius: 4px; 
+            transition: all 0.3s ease; border-bottom: 2px solid transparent; 
+            text-shadow: 0 0 5px rgba(255, 165, 0, 0.5); /* Updated from new style */
+        }
+        nav#main-nav a:hover, nav#main-nav a.active { 
+            color: #000000; text-shadow: 0 0 10px rgb(4, 0, 255);
+            border-bottom: 2px solid #1d4ed8; background-color: #2600ff;
+        }
+        
+        main { max-width: 1100px; margin: 0 auto; padding: 120px 20px 40px; position: relative; z-index: 10; }
+        
+        /* --- Card and Component Styles --- */
+        .card { 
+            background: rgba(10, 10, 25, 0.3); /* Lighter background than the user's template */
+            backdrop-filter: blur(10px); 
+            border-radius: 15px; 
+            padding: 25px; 
+            border: 1px solid rgba(38, 151, 255, 0.3);
+            box-shadow: 0 0 15px rgba(38, 151, 255, 0.4);
+            transition: all 0.4s ease;
+        }
+        .card-grid { display: grid; gap: 20px; }
+        .grid-2 { grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); }
+        
+        h1 { font-family: 'Orbitron', sans-serif; font-size: 2.5rem; text-align: center; margin-bottom: 20px; color: #E6F1FF; }
+        h3 { font-family: 'Orbitron', sans-serif; font-size: 1.2rem; color: #1d4ed8; }
+        
+        .muted { color: #9CA3AF; font-size: 0.9em; }
+        
+        /* Buttons and Inputs */
+        .input-group, .select-group { margin-bottom: 15px; }
+        .input-group label, .select-group label { display: block; margin-bottom: 5px; font-size: 0.9em; color: #B3CCFF; }
+        .btn-primary { 
+            background: #1d4ed8; color: white; padding: 10px 20px; border-radius: 8px; 
+            border: none; cursor: pointer; transition: background 0.3s, box-shadow 0.3s; 
+            box-shadow: 0 0 10px rgba(29, 78, 216, 0.5);
+        }
+        .btn-primary:hover { background: #2600ff; box-shadow: 0 0 15px #2600ff; }
+        .btn-ghost { background: rgba(255, 255, 255, 0.08); color: #E6F1FF; padding: 10px 20px; border-radius: 8px; border: 1px solid rgba(255, 255, 255, 0.1); cursor: pointer; transition: background 0.3s; }
+        .btn-ghost:hover { background: rgba(255, 255, 255, 0.15); }
+
+        select, input[type="file"] { 
+            width: 100%; background: rgba(0, 0, 0, 0.4); border: 1px solid rgba(38, 151, 255, 0.2); 
+            border-radius: 8px; padding: 8px; color: white; font-size: 1em;
+        }
+        input[type="file"]::-webkit-file-upload-button { background: #1d4ed8; color: white; padding: 8px 12px; border: none; border-radius: 6px; cursor: pointer; transition: background 0.3s; }
+        input[type="file"]::-webkit-file-upload-button:hover { background: #2600ff; }
+        
+        /* Tabs */
+        .tabs { border-bottom: 2px solid rgba(38, 151, 255, 0.3); margin-bottom: 20px; display: flex; gap: 20px; }
+        .tab { 
+            padding: 10px 15px; cursor: pointer; transition: color 0.3s, border-bottom 0.3s; 
+            font-weight: 500; color: #9CA3AF;
+        }
+        .active-tab { 
+            color: #1d4ed8; 
+            border-bottom: 3px solid #1d4ed8; 
+            text-shadow: 0 0 5px rgba(29, 78, 216, 0.8);
+        }
+
+        /* Table styles */
+        #previewTable th { text-align: left; padding: 8px; border-bottom: 1px solid rgba(255, 255, 255, 0.1); background: rgba(255, 255, 255, 0.05); font-weight: 500; }
+        #previewTable td { padding: 8px; border-top: 1px solid rgba(255, 255, 255, 0.05); }
+
+        /* Insight Badges */
+        .insight-badge { padding: 15px; border-left: 5px solid #1d4ed8; }
+        .insight-value { font-family: 'Orbitron', sans-serif; font-size: 2rem; color: #E6F1FF; }
+        
+        /* Plotly containers must be visible for rendering */
+        .plotly-container { height: 350px; width: 100%; }
+        
+        /* --- Footer Styles (UPDATED) --- */
+        :root {
+          --footer-bg: rgba(10, 25, 47, 0.8); /* Dark, semi-transparent navy blue */
+          --footer-text: #e6f1ff; /* Light blueish-white for text */
+          --footer-icon-color: #ffffff; /* Pure white for icons */
+        }
+        
+        .footer {
+          /* Use the variable for the background */
+          background: var(--footer-bg);
+          /* This creates the "glass" effect by blurring content behind the footer */
+          backdrop-filter: blur(10px);
+          -webkit-backdrop-filter: blur(10px); /* For Safari support */
+          
+          padding: 1rem 2rem; /* Using rem for scalable sizing */
+          color: var(--footer-text);
+          font-family: 'Inter', sans-serif; /* Cleaner font declaration */
+          
+          display: flex;
+          justify-content: center;
+          align-items: center;
+          
+          /* Add a subtle top border for definition */
+          border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .footer-container {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          width: 100%;
+          max-width: 1100px; /* Slightly wider for modern screens */
+        }
+        
+        .footer-left p {
+          margin: 0;
+          font-size: 1rem;
+          font-weight: 400; /* Regular weight can look cleaner */
+        }
+        
+        .footer-right {
+          display: flex;
+          align-items: center;
+          gap: 1rem; /* Use gap for consistent spacing between icons */
+        }
+        
+        .footer-icon {
+          width: 24px;
+          height: 24px;
+          /* A simpler filter to turn the icons white */
+          filter: invert(1);
+          opacity: 0.8; /* Slightly muted icons look more professional */
+          transition: opacity 0.3s ease, transform 0.3s ease;
+        }
+        
+        .footer-right a:hover .footer-icon {
+          opacity: 1; /* Full opacity on hover */
+          transform: scale(1.15) translateY(-2px); /* Add a subtle lift effect */
+        }
+        
+        /* --- Responsive Design for Mobile --- */
+        @media (max-width: 600px) {
+          .footer-container {
+            flex-direction: column; /* Stack items vertically on small screens */
+            gap: 1rem; /* Add space between the text and the icons */
+          }
+        
+          .footer-left {
+            order: 2; /* Move the copyright text below the icons */
+          }
+        
+          .footer-right {
+            order: 1; /* Move icons to the top */
+          }
+        }
+    </style>
+</head>
+<body>
+    <div id="canvas-container">
+        <canvas id="star-canvas"></canvas>
+    </div>
+
+    <header class="top-bar">
+        <div class="top-left">
+            <img src="images/nasa logo.png" alt="NASA Space App Challenge Logo"> 
+        </div>
+        
+        <nav id="main-nav">
+            <a href="index.html" class="nav-link">Home</a>
+            <a href="predict.html" class="nav-link active">Prediction</a>
+            <a href="explore.html" class="nav-link">Explore</a>
+            <a href="about.html" class="nav-link">About Us</a>
+            <a href="resource.html" class="nav-link" data-section="about">Resources</a>
+        </nav>
+        
+        <div class="top-right"></div>
+    </header>
+
+    <main>
+        <h1>Exoplanet Dataset Prediction & Evaluation</h1>
+        <p class="muted" style="text-align:center; margin-bottom: 40px;">Upload your feature CSV, select a model, and analyze the results.</p>
+
+        <div class="tabs">
+            <div id="tabUpload" class="tab active-tab">1) Configuration</div>
+            <div id="tabExplore" class="tab">2) Data Exploration (EDA)</div>
+            <div id="tabPredict" class="tab">3) Results & Evaluation</div>
+        </div>
+
+        <section id="panelUpload" class="card">
+            <div class="card-grid grid-2">
+                <div class="input-group">
+                    <label for="modelSelect">Select Exoplanet Dataset Model</label>
+                    <select id="modelSelect">
+                        </select>
+                </div>
+                <div class="input-group">
+                    <label for="csvFile">Upload CSV File (Features)</label>
+                    <input id="csvFile" type="file" accept=".csv" />
+                </div>
+                <div class="input-group">
+                    <label for="gtCol">Ground Truth Column (Optional, for evaluation)</label>
+                    <select id="gtCol"></select>
+                    <p class="muted" style="margin-top: 5px;">Must contain CANDIDATE/CONFIRMED/FALSE POSITIVE or 0/1/2.</p>
+                </div>
+                <div class="input-group" style="display: flex; align-items: flex-end; gap: 10px;">
+                    <button id="btnAnalyze" class="btn-ghost" disabled>Analyze Data</button>
+                    <button id="btnPredict" class="btn-primary" disabled>Run Prediction</button>
+                </div>
+            </div>
+            
+            <p id="status" class="muted" style="margin-top: 20px;"></p>
+
+            <div id="downloadWrap" style="margin-top: 15px; display: none;">
+                <a id="downloadLink" href="#" class="btn-primary" style="background:#0F9D58; display: inline-block; text-decoration: none;">Download Predictions CSV</a>
+            </div>
+
+            <div id="reqNote" class="muted" style="margin-top: 20px;"></div>
+        </section>
+
+        <section id="panelExplore" class="hidden" style="display: none;">
+            <div class="card-grid">
+                <div class="card">
+                    <h3>Missing Values</h3>
+                    <div id="missingChart" class="plotly-container"></div>
+                </div>
+                <div class="card">
+                    <h3>Feature Importance</h3>
+                    <div id="fiChart" class="plotly-container"></div>
+                    <p class="muted">Top-K features used by the selected model.</p>
+                </div>
+                <div class="card" style="grid-column: 1 / -1;">
+                    <h3>Correlation Heatmap</h3>
+                    <div id="corrChart" class="plotly-container" style="height: 500px;"></div>
+                    <p class="muted">Pearson correlation matrix for top-variance numeric columns (max 15).</p>
+                </div>
+                <div class="card">
+                    <h3>Scatter Plot Explorer</h3>
+                    <div style="display: flex; gap: 10px; margin-bottom: 10px;">
+                        <select id="scatX"></select>
+                        <select id="scatY"></select>
+                        <label class="muted" style="display:flex; align-items:center; gap:5px;"><input type="checkbox" id="colorPred" disabled> Color by Prediction</label>
+                    </div>
+                    <div id="scatterChart" class="plotly-container"></div>
+                </div>
+                <div class="card">
+                    <h3>Sample Data Preview</h3>
+                    <div id="previewWrap" style="overflow-x: auto; max-height: 400px; border: 1px solid rgba(255,255,255,0.1); border-radius: 8px;">
+                        <table id="previewTable" style="width: 100%; border-collapse: collapse;"></table>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="panelPredict" class="hidden" style="display: none;">
+            <div class="card-grid grid-2" style="grid-template-columns: repeat(4, 1fr); margin-bottom: 20px;">
+                <div class="card insight-badge">
+                    <div class="muted">Accuracy</div>
+                    <div id="ins_acc" class="insight-value">—</div>
+                </div>
+                <div class="card insight-badge">
+                    <div class="muted">Macro F1 Score</div>
+                    <div id="ins_f1" class="insight-value">—</div>
+                </div>
+                <div class="card insight-badge">
+                    <div class="muted">Evaluated Rows</div>
+                    <div id="ins_evalrows" class="insight-value">—</div>
+                </div>
+                <div class="card insight-badge">
+                    <div class="muted">Dropped Rows (Invalid GT)</div>
+                    <div id="ins_dropped" class="insight-value">—</div>
+                </div>
+            </div>
+
+            <div class="card-grid grid-2">
+                <div class="card">
+                    <h3>Confusion Matrix</h3>
+                    <div id="cmChart" class="plotly-container"></div>
+                    <p class="muted">Only visible if Ground Truth column is selected and valid.</p>
+                </div>
+                <div class="card">
+                    <h3>Predicted Class Distribution</h3>
+                    <div id="barChart" class="plotly-container"></div>
+                </div>
+                <div class="card">
+                    <h3>Prediction Confidence Histogram</h3>
+                    <div id="confHist" class="plotly-container"></div>
+                    <p class="muted">Shows distribution of the predicted class probability.</p>
+                </div>
+                <div class="card">
+                    <h3>Actual vs Prediction (Line Overlap)</h3>
+                    <div id="lineOverlap" class="plotly-container"></div>
+                </div>
+
+                <div class="card" id="rocprCard" style="grid-column: 1 / -1; display:none;">
+                    <h3>ROC & Precision–Recall Curves (One-vs-Rest)</h3>
+                    <div class="card-grid grid-2">
+                        <div id="rocChart" class="plotly-container"></div>
+                        <div id="prChart" class="plotly-container"></div>
+                    </div>
+                    <p class="muted">Requires model confidence scores and valid Ground Truth data.</p>
+                </div>
+            </div>
+        </section>
+
+    </main>
+    
+    <footer class="footer">
+      <div class="footer-container">
+        <div class="footer-left">
+          <p>&copy; 2025 NASA Space Apps Challenge</p>
+        </div>
+        <div class="footer-right">
+          <a href="https://github.com/Prathamesh603" target="_blank" aria-label="Visit Prathamesh's GitHub profile">
+            <img src="https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/github.svg" alt="GitHub" class="footer-icon">
+          </a>
+          <a href="https://www.linkedin.com/in/prathamesh-rajput-5364802b6/" target="_blank" aria-label="Visit Prathamesh's LinkedIn profile">
+            <img src="https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/linkedin.svg" alt="LinkedIn" class="footer-icon">
+          </a>
+        </div>
+      </div>
+    </footer>
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script>
+        // --- Three.js Starry Background Script (from user's template) ---
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer({ canvas: document.querySelector('#star-canvas'), alpha: true });
+        renderer.setPixelRatio(window.devicePixelRatio);
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        camera.position.setZ(30);
+        const starGeometry = new THREE.BufferGeometry();
+        const starCount = 6000;
+        const positions = new Float32Array(starCount * 3);
+        for (let i = 0; i < starCount * 3; i++) {
+            positions[i] = (Math.random() - 0.5) * 2000;
+        }
+        starGeometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+        const starMaterial = new THREE.PointsMaterial({ color: 0xffffff, size: 0.7, transparent: true });
+        const starField = new THREE.Points(starGeometry, starMaterial);
+        scene.add(starField);
+        function animate() {
+            requestAnimationFrame(animate);
+            starField.rotation.x += 0.0001;
+            starField.rotation.y += 0.0001;
+            renderer.render(scene, camera);
+        }
+        animate();
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        // --- Core Application Logic ---
+        
+        // --- Elements ---
+        const modelSelect = document.getElementById('modelSelect');
+        const statusEl = document.getElementById('status');
+        const csvInput = document.getElementById('csvFile');
+        const gtSelect = document.getElementById('gtCol');
+        const btnAnalyze = document.getElementById('btnAnalyze');
+        const btnPredict = document.getElementById('btnPredict');
+        const downloadWrap = document.getElementById('downloadWrap');
+        const downloadLink = document.getElementById('downloadLink');
+        const reqNote = document.getElementById('reqNote');
+        
+        const previewTable = document.getElementById('previewTable');
+        const previewWrap = document.getElementById('previewWrap');
+        
+        // Tabs & Panels
+        const tabUpload = document.getElementById('tabUpload');
+        const tabExplore = document.getElementById('tabExplore');
+        const tabPredict = document.getElementById('tabPredict');
+        const panelUpload = document.getElementById('panelUpload');
+        const panelExplore = document.getElementById('panelExplore');
+        const panelPredict = document.getElementById('panelPredict');
+        
+        // EDA Controls
+        const scatX = document.getElementById('scatX');
+        const scatY = document.getElementById('scatY');
+        const colorPred = document.getElementById('colorPred');
+        
+        // Charts
+        const missingChart = document.getElementById('missingChart');
+        const corrChart = document.getElementById('corrChart');
+        const fiChart = document.getElementById('fiChart');
+        const scatterChart = document.getElementById('scatterChart');
+        const barChart = document.getElementById('barChart');
+        const confHist = document.getElementById('confHist');
+        const cmChart = document.getElementById('cmChart');
+        const lineOverlap = document.getElementById('lineOverlap');
+        const rocprCard = document.getElementById('rocprCard');
+        const rocChart = document.getElementById('rocChart');
+        const prChart = document.getElementById('prChart');
+
+        // Insights
+        const insAcc = document.getElementById('ins_acc');
+        const insF1 = document.getElementById('ins_f1');
+        const insEval = document.getElementById('ins_evalrows');
+        const insDrop = document.getElementById('ins_dropped');
+
+        // State
+        let analysis = null;
+        let lastJobId = null;
+        let modelInfo = { n_train_features: 0, train_features: [] };
+        let numericCols = []; // Stores numeric columns for scatter/corr/etc.
+
+        // --- Tab Logic ---
+        function activate(tab) {
+            [tabUpload, tabExplore, tabPredict].forEach(t => t.classList.remove('active-tab'));
+            [panelUpload, panelExplore, panelPredict].forEach(p => p.style.display = 'none');
+
+            if (tab === 'upload') { tabUpload.classList.add('active-tab'); panelUpload.style.display = 'block'; }
+            if (tab === 'explore') { tabExplore.classList.add('active-tab'); panelExplore.style.display = 'grid'; }
+            if (tab === 'predict') { tabPredict.classList.add('active-tab'); panelPredict.style.display = 'grid'; }
+            
+            // Re-render plotly charts after switching to a visible panel
+            setTimeout(Plotly.Plots.resize, 100);
+        }
+        tabUpload.onclick = () => activate('upload');
+        tabExplore.onclick = () => analysis && activate('explore');
+        tabPredict.onclick = () => lastJobId && activate('predict');
+
+
+        // --- Helper Functions ---
+        function setStatus(msg, ok = true) {
+            statusEl.textContent = msg;
+            statusEl.className = ok ? "muted" : "muted" + " text-red-500"; // Simple color change based on status
+            statusEl.style.color = ok ? '#34D399' : '#F87171';
+        }
+
+        function fillSelect(sel, items, defaultVal = null) {
+            sel.innerHTML = items.map(c => `<option value="${c}" ${c === defaultVal ? 'selected' : ''}>${c}</option>`).join('');
+        }
+
+        function buildTable(rows) {
+            const table = previewTable;
+            table.innerHTML = "";
+            if (!rows || !rows.length) {
+                table.innerHTML = "<tbody><tr><td style='padding:15px;' class='muted'>No data preview.</td></tr></tbody>";
+                return;
+            }
+            const thead = document.createElement('thead');
+            thead.style.position = 'sticky'; // Sticky header for scroll
+            thead.style.top = '0';
+            thead.style.backgroundColor = 'rgba(0, 0, 0, 0.7)';
+            
+            const headerRow = document.createElement('tr');
+            Object.keys(rows[0]).forEach(k => {
+                const th = document.createElement('th');
+                th.textContent = k;
+                headerRow.appendChild(th);
+            });
+            thead.appendChild(headerRow);
+            const tbody = document.createElement('tbody');
+            rows.forEach(r => {
+                const tr = document.createElement('tr');
+                Object.values(r).forEach(v => {
+                    const td = document.createElement('td');
+                    td.textContent = v;
+                    tr.appendChild(td);
+                });
+                tbody.appendChild(tr);
+            });
+            table.appendChild(thead);
+            table.appendChild(tbody);
+        }
+        
+        function validateSchema(foundCols, required) {
+            const requiredSet = new Set(required || []);
+            const found = new Set(foundCols || []);
+            const missing = [...requiredSet].filter(c => !found.has(c));
+            return { missing, ok: missing.length === 0 };
+        }
+        
+        // --- Chart Renderers (using the space theme) ---
+        const CHART_LAYOUT_BASE = {
+            margin: { t: 30, r: 10, b: 50, l: 60 },
+            paper_bgcolor: 'rgba(0,0,0,0)', 
+            plot_bgcolor: 'rgba(0,0,0,0.1)',
+            font: { color: '#B3CCFF', family: 'Inter' },
+            modebar: { bgcolor: 'rgba(0,0,0,0)', color: '#9CA3AF', activecolor: '#1d4ed8' },
+            hovermode: 'closest',
+            xaxis: { gridcolor: 'rgba(255,255,255,0.05)', zerolinecolor: 'rgba(255,255,255,0.1)' },
+            yaxis: { gridcolor: 'rgba(255,255,255,0.05)', zerolinecolor: 'rgba(255,255,255,0.1)' },
+            legend: { x: 1, y: 1, yanchor: 'top', bgcolor: 'rgba(0,0,0,0.5)', bordercolor: 'rgba(255,255,255,0.1)', font: { size: 10 } }
+        };
+
+        function renderMissing(missing) {
+            const labels = Object.keys(missing || {});
+            const counts = labels.map(k => missing[k]);
+            if (!labels.length) { missingChart.innerHTML = '<div class="muted" style="padding: 10px;">No missing values found.</div>'; return; }
+            Plotly.newPlot(missingChart, [{ x: labels, y: counts, type: 'bar', marker: { color: '#FF7043' } }], {
+                ...CHART_LAYOUT_BASE,
+                title: 'Missing Values by Column',
+                xaxis: { ...CHART_LAYOUT_BASE.xaxis, tickangle: -30, automargin: true },
+            });
+        }
+        
+        function renderFeatureImportance(fi) {
+            if (!fi || !fi.length) { fiChart.innerHTML = '<div class="muted" style="padding: 10px;">Feature importance not available for this model.</div>'; return; }
+            const features = fi.map(f => f.feature).reverse();
+            const importance = fi.map(f => f.importance).reverse();
+            Plotly.newPlot(fiChart, [{
+                x: importance, y: features, type: 'bar', orientation: 'h', marker: { color: '#00BFFF' }
+            }], {
+                ...CHART_LAYOUT_BASE,
+                title: 'Top Feature Importances',
+                xaxis: { title: 'Importance' },
+                yaxis: { automargin: true }
+            });
+        }
+
+        function renderCorr(c) {
+            if (!c || !c.labels || c.labels.length < 2) { corrChart.innerHTML = '<div class="muted" style="padding: 10px;">Not enough numeric columns for correlation heatmap.</div>'; return; }
+            Plotly.newPlot(corrChart, [{
+                z: c.matrix, x: c.labels, y: c.labels, type: 'heatmap', colorscale: 'RdBu', zmin: -1, zmax: 1
+            }], {
+                ...CHART_LAYOUT_BASE,
+                title: 'Feature Correlation (Top Variance)',
+                xaxis: { ...CHART_LAYOUT_BASE.xaxis, tickangle: -45, automargin: true },
+                yaxis: { ...CHART_LAYOUT_BASE.yaxis, automargin: true }
+            });
+        }
+        
+        function plotCounts(labelCounts) {
+            const classes = Object.keys(labelCounts || {});
+            const counts = classes.map(k => labelCounts[k]);
+            Plotly.newPlot(barChart, [{ x: classes, y: counts, type: 'bar', text: counts, textposition: 'auto', marker: { color: '#00BFFF' } }],
+                { ...CHART_LAYOUT_BASE, title: 'Predicted Class Distribution' });
+        }
+        
+        function plotConfHist(h) {
+            if (!h) { confHist.innerHTML = '<div class="muted" style="padding: 10px;">No probabilities available for confidence histogram.</div>'; return; }
+            const mids = []; for (let i = 0; i < h.bins.length - 1; i++) mids.push((h.bins[i] + h.bins[i + 1]) / 2);
+            Plotly.newPlot(confHist, [{ x: mids, y: h.counts, type: 'bar', marker: { color: '#4CAF50' } }],
+                { ...CHART_LAYOUT_BASE, title: 'Prediction Confidence', xaxis: { title: 'Confidence' }, yaxis: { title: 'Count' } });
+        }
+        
+        function plotCM(cm) {
+            if (!cm || !cm.labels) { cmChart.innerHTML = '<div class="muted" style="padding: 10px;">Ground Truth column is missing or invalid.</div>'; return; }
+            Plotly.newPlot(cmChart, [{
+                z: cm.matrix, x: cm.labels, y: cm.labels, type: 'heatmap', colorscale: 'Viridis', zauto: true
+            }], {
+                ...CHART_LAYOUT_BASE,
+                title: 'Confusion Matrix',
+                xaxis: { title: 'Predicted Label', automargin: true },
+                yaxis: { title: 'Actual Label', automargin: true }
+            });
+        }
+        
+        function plotLine(series) {
+            if (!series || !series.index) { lineOverlap.innerHTML = '<div class="muted" style="padding: 10px;">Ground Truth column is missing or invalid.</div>'; return; }
+            const t1 = { x: series.index, y: series.actual, mode: 'lines', name: 'Actual', line: { color: '#FF7043', width: 2 } };
+            const t2 = { x: series.index, y: series.predicted, mode: 'lines', name: 'Predicted', line: { color: '#00BFFF', width: 1, dash: 'dot' } };
+            Plotly.newPlot(lineOverlap, [t1, t2], {
+                ...CHART_LAYOUT_BASE,
+                title: 'Actual vs Predicted (Row Index)',
+                yaxis: {
+                    ...CHART_LAYOUT_BASE.yaxis,
+                    tickmode: 'array', tickvals: [0, 1, 2],
+                    ticktext: ['CANDIDATE', 'CONFIRMED', 'FALSE POSITIVE'],
+                    title: 'Class Code'
+                },
+                xaxis: { title: 'Row Index' }
+            });
+        }
+        
+        function plotROC_PR(evalData) {
+            const hasCurves = evalData.roc && evalData.pr;
+            rocprCard.style.display = hasCurves ? 'block' : 'none';
+            if (!hasCurves) return;
+            
+            const rocTraces = evalData.roc.map(c => ({
+                x: c.fpr, y: c.tpr, mode: 'lines', name: `${c.label} (AUC: ${c.auc.toFixed(3)})`,
+            }));
+            Plotly.newPlot(rocChart, rocTraces, {
+                ...CHART_LAYOUT_BASE,
+                title: 'ROC Curve (One-vs-Rest)',
+                xaxis: { title: 'False Positive Rate (FPR)' },
+                yaxis: { title: 'True Positive Rate (TPR)' },
+                shapes: [{ type: 'line', x0: 0, x1: 1, y0: 0, y1: 1, line: { color: 'gray', dash: 'dash', width: 1 } }]
+            });
+            
+            const prTraces = evalData.pr.map(c => ({
+                x: c.recall, y: c.precision, mode: 'lines', name: c.label,
+            }));
+            Plotly.newPlot(prChart, prTraces, {
+                ...CHART_LAYOUT_BASE,
+                title: 'Precision-Recall Curve',
+                xaxis: { title: 'Recall' },
+                yaxis: { title: 'Precision' },
+                yaxis: { ...CHART_LAYOUT_BASE.yaxis, range: [0, 1.05] }
+            });
+        }
+        
+        function plotScatter(x_data, y_data, pred_data) {
+            const hasPrediction = pred_data && pred_data.length > 0;
+            const trace = {
+                x: x_data, y: y_data, mode: 'markers', type: 'scatter',
+                marker: { size: 6, line: { width: 0.5, color: 'rgba(255,255,255,0.5)' } },
+                name: 'Data Points'
+            };
+
+            if (hasPrediction && colorPred.checked) {
+                // Define colors for the canonical labels
+                const colors = {
+                    'CANDIDATE': '#FFD700', // Gold
+                    'CONFIRMED': '#4CAF50', // Green
+                    'FALSE POSITIVE': '#F44336' // Red
+                };
+                
+                // Group points by prediction for correct legend/coloring
+                const traces = Object.keys(colors).map(label => {
+                    const indices = pred_data.map((p, i) => p === label ? i : -1).filter(i => i !== -1);
+                    return {
+                        x: indices.map(i => x_data[i]),
+                        y: indices.map(i => y_data[i]),
+                        mode: 'markers',
+                        type: 'scatter',
+                        name: label,
+                        marker: { color: colors[label], size: 7, opacity: 0.7 }
+                    };
+                });
+                Plotly.newPlot(scatterChart, traces, {
+                    ...CHART_LAYOUT_BASE,
+                    title: `Scatter: ${scatX.value} vs ${scatY.value}`,
+                    xaxis: { title: scatX.value },
+                    yaxis: { title: scatY.value }
+                });
+
+            } else {
+                 trace.marker.color = '#1d4ed8'; // Default blue glow
+                 Plotly.newPlot(scatterChart, [trace], {
+                    ...CHART_LAYOUT_BASE,
+                    title: `Scatter: ${scatX.value} vs ${scatY.value}`,
+                    xaxis: { title: scatX.value },
+                    yaxis: { title: scatY.value }
+                });
+            }
+        }
+        
+       // --- API base ---
+const API_BASE = "http://127.0.0.1:8000";
+
+// --- API & State Handlers ---
+async function fetchModelKeys() {
+    try {
+        const res = await fetch(`${API_BASE}/api/model-keys`);
+        const data = await res.json();
+        fillSelect(modelSelect, data.model_keys);
+        modelSelect.value = data.model_keys[0] || '';
+        await fetchModelInfo(modelSelect.value); // Load initial model info
+        btnAnalyze.disabled = false;
+    } catch (e) {
+        setStatus("Error fetching model list. Check server status.", false);
+    }
+}
+
+async function fetchModelInfo(modelKey) {
+    try {
+        const res = await fetch(`${API_BASE}/api/model-info?model_key=${modelKey}`);
+        const mi = await res.json();
+        modelInfo = mi;
+        reqNote.innerHTML = `Model **${modelKey}** requires **${mi.n_train_features}** features. <a href="#" onclick="alert('Required features:\\n${mi.train_features.join(', ')}')">Click to view list.</a>`;
+    } catch (e) {
+        setStatus(`Error fetching model info for ${modelKey}.`, false);
+    }
+}
+
+async function postFile(url, modelKey, gt = null) {
+    const f = csvInput.files[0];
+    if (!f) { setStatus("Choose a CSV file.", false); return null; }
+    const fd = new FormData();
+    fd.append('file', f);
+    fd.append('model_key', modelKey);
+    if (gt) fd.append('gt_col', gt);
+
+    const res = await fetch(`${API_BASE}${url}`, { method: 'POST', body: fd });
+    if (!res.ok) {
+        let msg = "Server error.";
+        try { const err = await res.json(); msg = err.detail || err.message || JSON.stringify(err); }
+        catch { msg = await res.text(); }
+        setStatus(msg, false); console.error(msg); return null;
+    }
+    return await res.json();
+}
+
+async function fetchScatterPlot(xCol, yCol) {
+    if (!lastJobId || !xCol || !yCol) return;
+    try {
+        const url = `${API_BASE}/api/predict-scatter?job_id=${lastJobId}&x=${xCol}&y=${yCol}`;
+        const res = await fetch(url);
+        const data = await res.json();
+        plotScatter(data.x, data.y, data.prediction);
+    } catch (e) {
+        console.error("Error fetching scatter data:", e);
+        plotScatter([], [], []); 
+    }
+}
+
+// --- Event Handlers ---
+modelSelect.onchange = () => {
+    fetchModelInfo(modelSelect.value);
+    analysis = null;
+    gtSelect.innerHTML = '<option value="">(none)</option>';
+    setStatus("Please re-run Analyze for the new model.");
+    btnPredict.disabled = true;
+    lastJobId = null;
+};
+
+
+        btnAnalyze.onclick = async () => {
+            activate('explore');
+            const modelKey = modelSelect.value;
+            setStatus(`Analyzing data for model **${modelKey}**...`);
+
+            const data = await postFile('/api/analyze-json', modelKey);
+            if (!data) return;
+
+            const v = validateSchema(data.columns_found, modelInfo.train_features);
+            if (!v.ok) {
+                setStatus(`**ERROR**: Missing ${v.missing.length} required feature(s) for model ${modelKey}.`, false);
+                reqNote.innerHTML = `<span style="color:#F87171;">Missing Features:</span> ${v.missing.map(x => `<code>${x}</code>`).join(', ')}`;
+                btnPredict.disabled = true;
+                analysis = null;
+                return;
+            }
+
+            analysis = data;
+            numericCols = data.numeric_cols;
+            setStatus(`File OK: ${data.n_rows} rows, ${data.n_cols} columns.`);
+            btnPredict.disabled = false;
+
+            // Update UI/Charts
+            buildTable(data.preview);
+            fillSelect(gtSelect, ["(none)", ...data.columns_found], "(none)");
+            fillSelect(scatX, numericCols, numericCols[0]);
+            fillSelect(scatY, numericCols, numericCols[1] || numericCols[0]);
+            scatX.onchange = () => fetchScatterPlot(scatX.value, scatY.value);
+            scatY.onchange = () => fetchScatterPlot(scatX.value, scatY.value);
+            colorPred.disabled = true; // Disabled until prediction runs
+
+            renderMissing(data.missing_counts);
+            renderCorr(data.corr);
+            renderFeatureImportance(data.feature_importance);
+            fetchScatterPlot(scatX.value, scatY.value); // Initial scatter plot
+        };
+
+        btnPredict.onclick = async () => {
+            activate('predict');
+            const modelKey = modelSelect.value;
+            const gt = gtSelect.value === "(none)" ? null : gtSelect.value;
+            setStatus(`Running prediction for model **${modelKey}**...`);
+
+            if (!analysis) { setStatus("Run Analyze first to validate your file.", false); return; }
+
+            const data = await postFile('/api/predict-json', modelKey, gt);
+            if (!data) return;
+
+            setStatus("Predictions ready. Evaluation complete if Ground Truth was valid.");
+            
+            // Re-render preview with prediction columns
+            buildTable(data.preview);
+
+            lastJobId = data.job_id;
+            if (lastJobId) {
+                downloadLink.href = `/api/download/${lastJobId}`; 
+                downloadWrap.style.display = 'block';
+            }
+
+            // Enable scatter coloring
+            colorPred.disabled = false;
+            colorPred.onchange = () => fetchScatterPlot(scatX.value, scatY.value);
+            fetchScatterPlot(scatX.value, scatY.value); // Update scatter with colors
+
+            // Update Insight badges
+            insAcc.textContent = insF1.textContent = insEval.textContent = insDrop.textContent = '—';
+            const e = data.eval || {};
+            if (e.eval_rows > 0) {
+                insAcc.textContent = (e.accuracy || 0).toFixed(3);
+                insF1.textContent = (e.macro_f1 || 0).toFixed(3);
+                insEval.textContent = e.eval_rows;
+                insDrop.textContent = e.dropped_rows;
+            } else if (gt) {
+                setStatus("Ground Truth selected but no valid labels found for evaluation. Showing predictions only.", false);
+                insDrop.textContent = e.dropped_rows || data.n_rows;
+            }
+            
+            // Update Plots
+            plotCounts(data.label_counts);
+            plotConfHist(data.confidence_hist);
+            if (e.eval_rows > 0) {
+                plotCM(e.confusion);
+                plotLine(e.line_series);
+                plotROC_PR(e);
+            } else {
+                plotCM(null); plotLine(null); plotROC_PR({});
+            }
+        };
+
+        // --- Initialization ---
+        document.addEventListener('DOMContentLoaded', fetchModelKeys);
+    </script>
+</body>
+</html>

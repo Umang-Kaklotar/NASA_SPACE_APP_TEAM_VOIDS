@@ -1,0 +1,951 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hunt for Exoplanets</title>
+    <style>
+        body {
+            /* 1. ALLOW FULL-PAGE SCROLLING */
+            margin: 0;
+            overflow-y: scroll; /* Allow vertical scrolling */
+            background-color: #010101; 
+            font-family: 'Inter', sans-serif;
+            color: white;
+            min-height: 200vh; /* Ensure there is content to scroll past */
+        }
+        
+        /* 2. MAKE CANVAS SECTION FULL VIEWPORT HEIGHT */
+        #canvas-container {
+            position: relative;
+            width: 100%;
+            height: 100vh; /* Takes up the initial screen height */
+        }
+
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+        
+        /* Fade in animation for canvas */
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        
+        canvas {
+            animation: fadeIn 0.5s ease-in forwards;
+        }
+
+        /* --- TOP BAR (Fixed on screen) --- */
+        .top-bar {
+            position: fixed; /* Keep it visible while scrolling */
+            top: 0;
+            left: 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px 40px;
+            width: 100%;
+            box-sizing: border-box;
+            z-index: 300; 
+            background: linear-gradient(to bottom, rgba(0, 0, 0, 0.9) 0%, rgba(0, 0, 0, 0.0) 100%);
+        }
+
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        .top-left {
+            font-size: 1.5em;
+            font-weight: 700;
+            color: #ffffff;
+            text-shadow: 0 0 10px rgba(0, 191, 255, 0.7);
+            display: flex; 
+            align-items: center;
+            opacity: 0;
+            animation: fadeInUp 1s ease-out 2s forwards;
+            pointer-events: all; 
+            transition: opacity 0.5s ease-out; /* Added transition for smooth hiding */
+        }
+        
+        /* This targets the logo specifically, so it hides with the whole bar */
+        .top-left img {
+            height: 100px; 
+            margin-right: 10px;
+        }
+
+        /* --- NAVIGATION BAR STYLES --- */
+        nav#main-nav {
+            display: flex;
+            gap: 30px;
+            font-size: 1.1em;
+            font-weight: 500;
+            opacity: 0;
+            animation: fadeInUp 1s ease-out 1.5s forwards;
+            pointer-events: all;
+            transition: opacity 0.5s ease-out; /* Added transition for smooth hiding */
+           
+           
+        }
+
+        nav#main-nav a {
+            color: #f9f8f6;
+            text-decoration: none;
+            padding: 5px 10px;
+            border-radius: 4px;
+            transition: color 0.3s, text-shadow 0.3s, border-bottom 0.3s;
+            text-shadow: 0 0 5px rgba(255, 165, 0, 0.5);
+            border-bottom: 2px solid transparent ; 
+        }
+
+        nav#main-nav a:hover, nav#main-nav a.active { 
+            color: #000000;
+            text-shadow: 0 0 10px rgb(4, 0, 255);
+            border-bottom: 2px solid #1d4ed8;  
+            background-color: #2600ff;
+        }
+
+        /* --- BUTTONS STYLES --- */
+        .top-right {
+            display: flex;
+            gap: 15px; 
+            opacity: 0;
+            animation: fadeInUp 1s ease-out 2.5s forwards;
+            pointer-events: all;
+        }
+        
+        #explore-btn, #back-btn {
+            pointer-events: all; 
+            font-size: 1em;
+            font-weight: 700;
+            border: none;
+            padding: 12px 25px;
+            border-radius: 8px;
+            cursor: pointer;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            transition: transform 0.2s ease, box-shadow 0.2s ease, background-color 0.2s;
+        }
+
+        #explore-btn {
+            color: #000;
+            background-color: #2600ff;
+            box-shadow: 0 0 20px rgba(0, 4, 255, 0.5);
+        }
+
+        #explore-btn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 0 30px #2600ff(255, 204, 0, 0.8);
+        }
+        
+        #back-btn {
+            color: #ffffff;
+            background-color: rgba(0, 0, 0, 0.5);
+            border: 1px solid #ff0800;
+            box-shadow: 0 0 10px rgb(255, 21, 0);
+            /* Initially hidden on home screen */
+            display: none; 
+        }
+        
+        #back-btn:hover {
+            transform: scale(1.05);
+            background-color: rgba(255, 0, 0, 0.984);
+            box-shadow: 0 0 20px #ff0400(255, 204, 0, 0.6);
+        }
+        
+        .planet-label {
+            position: absolute;
+            background: rgba(0, 0, 0, 0.6);
+            color: #ffffff;
+            padding: 3px 8px;
+            border-radius: 5px;
+            font-size: 0.85em;
+            pointer-events: none; 
+            white-space: nowrap;
+            transform: translate(-50%, -120%); 
+            text-shadow: 0 0 5px rgba(255, 255, 255, 0.3);
+            z-index: 10;
+            opacity: 0;
+            animation: labelFadeIn 1s ease-in 3.5s forwards;
+        }
+        
+        @keyframes labelFadeIn {
+            to { opacity: 1; }
+        }
+        
+        /* --- INFO PANEL FOR PLANETS (Interactive Mode) --- */
+        #info-panel {
+            position: absolute; /* Default: Used during interactive mode */
+            top: 200px;
+            left: 20px;
+            padding: 18px;
+            background: rgba(0, 0, 0, 0.8);
+            border-radius: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            display: none; /* Initially hidden, shown on hover in interactive mode */
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            box-shadow: 0 4px 40px rgba(0, 0, 0, 0.6);
+            z-index: 100;
+            width: 280px;
+            pointer-events: all;
+            transition: all 0.5s ease;
+        }
+
+        #info-panel h2 {
+            margin: 0 0 12px 0;
+            font-size: 1.7em;
+            color: #2600ff;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.15);
+            padding-bottom: 8px;
+            text-shadow: 0 0 8px rgba(0, 8, 255, 0.5);
+        }
+        #info-panel p {
+            margin: 10px 0;
+            font-size: 1.05em;
+            color: #e0e0e0;
+        }
+        #info-panel p strong {
+            color: #ffffff;
+            font-weight: 700;
+            display: inline-block;
+            min-width: 140px;
+        }
+        
+        /* 3. NEW MAIN CONTENT SECTION (Appears below the 3D scene) */
+        #main-content-section {
+            width: 100%;
+            min-height: 100vh; /* Make sure it takes up space */
+            background-color: #010101;
+            padding: 80px 10%; 
+            box-sizing: border-box;
+            z-index: 10; 
+            position: relative; 
+            display: flex;
+            flex-direction: column;
+            gap: 40px;
+        }
+
+        /* 4. STATIC INFO PANEL (Used for the default view below the canvas) */
+        .static-info-panel {
+            position: relative !important; 
+            top: initial !important;
+            left: initial !important;
+            width: 300px !important; 
+            box-sizing: border-box !important;
+            /* Make it display on home page */
+            display: block !important; 
+            margin-bottom: 40px;
+        }
+        
+        /* General content styling */
+        .content-block h3 {
+            color: #2600ff;
+            font-size: 1.8em;
+            margin-top: 40px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid rgba(243, 243, 248, 0.5);
+        }
+        
+        .content-block p, .content-block ul {
+            color: #e0e0e0;
+            font-size: 1.1em;
+            line-height: 1.8;
+            max-width: 900px;
+        }
+        
+        .content-block ul {
+            list-style-type: '◆ ';
+            padding-left: 20px;
+        }
+        
+        
+    </style>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    
+    <div class="top-bar">
+        <h1 class="top-left">
+            <img src="images/nasa logo.png" alt="NASA Space App Challenge Logo"> 
+        </h1>
+        
+        <nav id="main-nav">
+            <a href="index.html" class="nav-link active" data-section="home">Home</a>
+            <a href="predict.html" class="nav-link" data-section="prediction">Prediction</a>
+            <a href="explore.html" class="nav-link" data-section="datasets">Explore</a>
+            <a href="about.html" class="nav-link" data-section="about">About Us</a>
+            <a href="resource.html" class="nav-link" data-section="about">Resources</a>
+        </nav>
+        
+        <div class="top-right">
+            <button id="back-btn">Back to Home</button>
+            <button id="explore-btn">Explore Animation</button>
+        </div>
+    </div>
+    
+    <div id="canvas-container">
+        </div>
+
+    <div id="label-container"></div> 
+
+    <div id="main-content-section">
+
+        <div id="info-panel" class="    ">
+            <h2 id="planet-name"></h2> 
+            <p><strong>Diameter:</strong> <span id="planet-diameter"></span> km</p>
+            <p><strong>Distance from Sun:</strong> <span id="planet-distance"></span> million km</p>
+            <p><strong>Orbital Period:</strong> <span id="planet-orbit"></span> days</p>
+            <p><strong>Exoplanet:</strong> <span id="planet-exoplanet"></span></p>
+        </div>
+
+        <div class="content-block">
+           
+
+            
+          <section id="project-overview" class="container">
+  <h2>Hunt for Exoplanets — Project Overview</h2>
+
+  <h3>Summary</h3>
+  <p>
+    Space-based surveys have produced vast volumes of transit photometry and catalog data from missions such as
+    <strong>Kepler</strong>, <strong>K2</strong>, and <strong>TESS</strong>. While many discoveries were made through manual vetting,
+    modern <strong>AI / ML</strong> techniques enable automated, scalable, and repeatable identification of exoplanet signals.
+    This project builds and deploys ML models that classify candidates into <em>Confirmed</em>, <em>Candidate</em>, or <em>False Positive</em>,
+    and integrates the best models into an interactive web interface for exploration and validation.
+  </p>
+
+  <h3>Background</h3>
+  <ul>
+    <li>
+      Many exoplanets are detected using the <strong>transit method</strong> — monitoring stellar brightness for characteristic dips
+      produced when a planet crosses in front of its host star.
+    </li>
+    <li>
+      Kepler provided nearly a decade of continuous photometry; K2 extended that legacy with a different survey pattern; TESS
+      continues to survey nearby stars since 2018.
+    </li>
+    <li>
+      Each mission publishes public catalogs containing confirmed planets, candidates, and false positives alongside features
+      such as orbital period, transit duration, planet radius, stellar parameters, and transit depth.
+    </li>
+  </ul>
+
+  <h3>Challenge</h3>
+  <ul>
+    <li>Manual classification is slow and can be inconsistent across human vetters.</li>
+    <li>Large-scale automated analysis must robustly handle noise, gaps, and variable-quality observations.</li>
+    <li>The central goal: create models that can reliably label new observations as <strong>Confirmed</strong>, <strong>Candidate</strong>, or <strong>False Positive</strong>.</li>
+  </ul>
+
+  <h3>Objectives</h3>
+  <ul>
+    <li>Train ML models on one or more NASA mission datasets to classify exoplanetary candidates.</li>
+    <li>Compare performance between models trained on author-provided catalog features and models trained on engineered or learned features from raw light curves.</li>
+    <li>Provide a web interface that allows users to upload or paste candidate data, run predictions, and visualize model outputs and confidence.</li>
+    <li>Document preprocessing, model decisions, and evaluation so results are transparent and reproducible.</li>
+  </ul>
+
+  <h3>Data Sources</h3>
+  <p>
+    Primary datasets come from NASA’s public archives for:
+  </p>
+  <ul>
+    <li><strong>Kepler</strong> — long-baseline photometry and object catalogs.</li>
+    <li><strong>K2</strong> — extended Kepler observations with multiple campaigns.</li>
+    <li><strong>TESS</strong> — wide-field short-cadence survey of nearby stars.</li>
+  </ul>
+  <p>
+    Dataset fields commonly used: orbital period, transit duration, transit depth, planet radius, stellar effective temperature,
+    surface gravity, metallicity, and photometric time-series (light curves).
+  </p>
+
+  <h3>Approach & Methodology</h3>
+  <ul>
+    <li>
+      <strong>Preprocessing:</strong> impute or remove missing values, normalize/scale numerical features, encode categoricals,
+      de-trend and denoise light curves, and handle class imbalance.
+    </li>
+    <li>
+      <strong>Feature strategies:</strong> evaluate author-provided catalog features vs. automatically extracted features (e.g., TSFEL,
+      custom time-series feature extraction) and learned representations (1D CNN / LSTM).
+    </li>
+    <li>
+      <strong>Modeling:</strong> classical classifiers (Random Forest, SVM, Logistic Regression) for tabular features; deep models
+      (1D CNN, LSTM, Transformer-style encoders) for raw light-curve sequences.
+    </li>
+    <li>
+      <strong>Evaluation:</strong> use precision, recall, F1, ROC-AUC, and confusion matrices across cross-validation folds and holdout sets.
+      Emphasize calibration and false-positive control.
+    </li>
+    <li>
+      <strong>Deployment:</strong> expose model inference through a lightweight API (Flask / FastAPI) and integrate into the frontend
+      with interactive visualizations and downloadable CSV results.
+    </li>
+  </ul>
+
+  <h3>Technical Stack</h3>
+  <ul>
+    <li><strong>Data & ML:</strong> Python, NumPy, pandas, Scikit-learn, TensorFlow / PyTorch, TSFEL (optional)</li>
+    <li><strong>Backend:</strong> Flask or FastAPI to serve model predictions and file uploads</li>
+    <li><strong>Frontend:</strong> React.js for UI, Three.js for 3D visualizations (optional), and D3 or Chart.js for plots</li>
+    <li><strong>DevOps:</strong> Docker for reproducible environments, GitHub for version control, and optional CI for model testing</li>
+  </ul>
+
+  <h3>User Interaction</h3>
+  <ul>
+    <li>Upload CSV files or paste candidate parameters for instant classification.</li>
+    <li>Visualize light curves with model overlays and per-sample confidence scores.</li>
+    <li>Download prediction results and view model diagnostics to support scientific review.</li>
+  </ul>
+
+  <h3>Call to action</h3>
+  <p>
+    Explore the <a href="explore.html">Explore</a> page for datasets, model training details, and interactive demos. Visit the
+    <a href="resource.html">Resources</a> tab for direct links to NASA archives and example CSVs to test locally.
+  </p>
+</section>
+
+
+        </div>
+    </div>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script> 
+
+    <script>
+    let isInteractive = false;
+
+    const ORBITAL_SPEED_FACTOR = 1.5; 
+
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 25000);
+    
+    // Initial camera position (start of intro)
+    camera.position.set(-3000, 1500, 4000);
+    camera.lookAt(0, 0, 0);
+
+    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setPixelRatio(window.devicePixelRatio);
+    renderer.shadowMap.enabled = true;
+    
+    // Append the canvas to the new container
+    document.getElementById('canvas-container').appendChild(renderer.domElement);
+
+    const labelContainer = document.getElementById('label-container');
+
+    const controls = new THREE.OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.05;
+    controls.screenSpacePanning = true;
+    controls.mouseButtons = {
+        LEFT: THREE.MOUSE.ROTATE,
+        MIDDLE: THREE.MOUSE.DOLLY,
+        RIGHT: THREE.MOUSE.PAN
+    };
+    controls.minDistance = 100;
+    controls.maxDistance = 10000;
+    controls.enabled = false; // Start disabled
+    
+    // Store final intro camera position for 'Back' button reset
+    const finalIntroPos = new THREE.Vector3(0, 300, 800); 
+
+    const pointLight = new THREE.PointLight(0xffebb5, 4.5, 20000, 0.01); 
+    pointLight.position.set(0, 0, 0);
+    scene.add(pointLight);
+    const ambientLight = new THREE.AmbientLight(0x222222, 0.3); 
+    scene.add(ambientLight);
+
+    // --- STARS and SUN CREATION (Helper functions) ---
+    function createGlowMaterial(opts) {
+        const uniforms = {
+            colorInner: { value: opts.colorInner }, colorOuter: { value: opts.colorOuter }, fresnelBias: { value: opts.bias }, fresnelScale: { value: opts.scale }, fresnelPower: { value: opts.power }
+        };
+        const vertexShader = `uniform float fresnelBias; uniform float fresnelScale; uniform float fresnelPower; varying float vFresnel; void main() { vec4 mvPosition = modelViewMatrix * vec4(position, 1.0); vec4 worldPosition = modelMatrix * vec4(position, 1.0); vec3 worldNormal = normalize(mat3(modelMatrix[0].xyz, modelMatrix[1].xyz, modelMatrix[2].xyz) * normal); vec3 I = normalize(worldPosition.xyz - cameraPosition); vFresnel = fresnelBias + fresnelScale * pow(1.0 + dot(I, worldNormal), fresnelPower); gl_Position = projectionMatrix * mvPosition; }`;
+        const fragmentShader = `uniform vec3 colorInner; uniform vec3 colorOuter; varying float vFresnel; void main() { float f = clamp(vFresnel, 0.0, 1.0); vec3 col = mix(colorInner, colorOuter, f); gl_FragColor = vec4(col, f * 0.85); }`;
+        return new THREE.ShaderMaterial({ uniforms, vertexShader, fragmentShader, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.FrontSide });
+    }
+
+    function createAdvancedSunTexture() {
+        const canvas = document.createElement('canvas'); canvas.width = 1024; canvas.height = 1024;
+        const ctx = canvas.getContext('2d');
+        const baseGrad = ctx.createRadialGradient(512, 512, 80, 512, 512, 512);
+        baseGrad.addColorStop(0.0, 'rgba(255,255,240,1.0)'); baseGrad.addColorStop(0.25, 'rgba(255,245,180,1.0)'); baseGrad.addColorStop(0.5, 'rgba(255,220,100,1.0)');
+        baseGrad.addColorStop(0.7, 'rgba(255,180,60,1.0)'); baseGrad.addColorStop(0.85, 'rgba(255,120,40,0.9)'); baseGrad.addColorStop(1.0, 'rgba(200,60,20,0)');
+        ctx.fillStyle = baseGrad; ctx.fillRect(0, 0, 1024, 1024);
+        for (let layer = 0; layer < 3; layer++) {
+            const numSpots = 150 - layer * 30;
+            for (let i = 0; i < numSpots; i++) {
+                const angle = Math.random() * Math.PI * 2, dist = Math.random() * 450, x = 512 + Math.cos(angle) * dist, y = 512 + Math.sin(angle) * dist;
+                const radius = Math.random() * 30 + 10 + layer * 10, alpha = (Math.random() * 0.4 + 0.2) * (1 - layer * 0.2);
+                const spotGrad = ctx.createRadialGradient(x, y, 0, x, y, radius);
+                spotGrad.addColorStop(0, `rgba(255,240,200,${alpha})`); spotGrad.addColorStop(0.5, `rgba(255,200,100,${alpha * 0.6})`); spotGrad.addColorStop(1, 'rgba(255,150,50,0)');
+                ctx.fillStyle = spotGrad; ctx.fillRect(x - radius, y - radius, radius * 2, radius * 2);
+            }
+        }
+        for (let i = 0; i < 40; i++) {
+            const angle = Math.random() * Math.PI * 2, dist = Math.random() * 400, x = 512 + Math.cos(angle) * dist, y = 512 + Math.sin(angle) * dist;
+            const radius = Math.random() * 15 + 8;
+            const darkGrad = ctx.createRadialGradient(x, y, 0, x, y, radius);
+            darkGrad.addColorStop(0, 'rgba(80,40,20,0.4)'); darkGrad.addColorStop(0.7, 'rgba(120,60,30,0.2)'); darkGrad.addColorStop(1, 'rgba(150,80,40,0)');
+            ctx.fillStyle = darkGrad; ctx.fillRect(x - radius, y - radius, radius * 2, radius * 2);
+        }
+        const tex = new THREE.CanvasTexture(canvas); tex.colorSpace = THREE.SRGBColorSpace; return tex;
+    }
+    
+    const sunGroup = new THREE.Group();
+    scene.add(sunGroup);
+
+    const sunGeometry = new THREE.SphereGeometry(100, 64, 64);
+    const sunMaterial = new THREE.MeshBasicMaterial({ color: 0xffee88, emissive: new THREE.Color(0xffcc33), emissiveIntensity: 3.0, map: createAdvancedSunTexture() });
+    const sun = new THREE.Mesh(sunGeometry, sunMaterial);
+    sunGroup.add(sun);
+
+    const innerRim = new THREE.Mesh(new THREE.SphereGeometry(100, 64, 64), createGlowMaterial({ colorInner: new THREE.Color(0xffffcc), colorOuter: new THREE.Color(0xffdd44), bias: 0.05, scale: 2.0, power: 2.5 }));
+    innerRim.scale.setScalar(1.03); sunGroup.add(innerRim);
+    const midGlow1 = new THREE.Mesh(new THREE.SphereGeometry(100, 64, 64), createGlowMaterial({ colorInner: new THREE.Color(0xffbb33), colorOuter: new THREE.Color(0xff8800), bias: 0.1, scale: 1.8, power: 3.0 }));
+    midGlow1.scale.setScalar(1.08); sunGroup.add(midGlow1);
+    const midGlow2 = new THREE.Mesh(new THREE.SphereGeometry(100, 64, 64), createGlowMaterial({ colorInner: new THREE.Color(0xff9933), colorOuter: new THREE.Color(0xff5500), bias: 0.15, scale: 1.6, power: 3.5 }));
+    midGlow2.scale.setScalar(1.15); sunGroup.add(midGlow2);
+    const outerGlow1 = new THREE.Mesh(new THREE.SphereGeometry(100, 64, 64), createGlowMaterial({ colorInner: new THREE.Color(0xff6622), colorOuter: new THREE.Color(0xff3300), bias: 0.2, scale: 1.4, power: 4.0 }));
+    outerGlow1.scale.setScalar(1.25); sunGroup.add(outerGlow1);
+    const outerGlow2 = new THREE.Mesh(new THREE.SphereGeometry(100, 48, 48), createGlowMaterial({ colorInner: new THREE.Color(0xff4411), colorOuter: new THREE.Color(0xcc2200), bias: 0.25, scale: 1.2, power: 4.5 }));
+    outerGlow2.scale.setScalar(1.4); sunGroup.add(outerGlow2);
+    const farHalo = new THREE.Mesh(new THREE.SphereGeometry(100, 32, 32), createGlowMaterial({ colorInner: new THREE.Color(0xcc3300), colorOuter: new THREE.Color(0x000000), bias: 0.3, scale: 1.0, power: 5.0 }));
+    farHalo.scale.setScalar(1.6); sunGroup.add(farHalo);
+
+    const sunLayers = [innerRim, midGlow1, midGlow2, outerGlow1, outerGlow2, farHalo];
+    
+    const starVertices = [];
+    for (let i = 0; i < 15000; i++) { 
+        starVertices.push(THREE.MathUtils.randFloatSpread(25000), THREE.MathUtils.randFloatSpread(25000), THREE.MathUtils.randFloatSpread(25000));
+    }
+    const starGeometry = new THREE.BufferGeometry();
+    starGeometry.setAttribute('position', new THREE.Float32BufferAttribute(starVertices, 3));
+    const starMaterial = new THREE.PointsMaterial({ color: 0xffffff, size: 1.5, transparent: true, opacity: 0.8 });
+    const stars = new THREE.Points(starGeometry, starMaterial);
+    scene.add(stars);
+    
+    // --- PLANET CREATION (Data) ---
+    const planets = [];
+    const planetData = [
+        { name: 'Mercury', color: 0x8c8c8c, radius: 4.8, distance: 200, speed: 0.047 }, { name: 'Venus', color: 0xe6e6e6, radius: 12.1, distance: 300, speed: 0.035 },
+        { name: 'Earth', color: 0x2f6a69, radius: 12.7, distance: 450, speed: 0.029 }, { name: 'Mars', color: 0xc1440e, radius: 6.7, distance: 600, speed: 0.024 },
+        { name: 'Jupiter', color: 0xad9b8a, radius: 139.8 / 2, distance: 1000, speed: 0.013 }, { name: 'Saturn', color: 0xd9c89b, radius: 116.5 / 2, distance: 1500, speed: 0.009, rings: { inner: 75, outer: 150 } },
+        { name: 'Uranus', color: 0x93d5e2, radius: 50.7 / 2, distance: 2000, speed: 0.006 }, { name: 'Neptune', color: 0x3f54ba, radius: 49.2 / 2, distance: 2500, speed: 0.005 },
+        { name: 'Kepler-186f', color: 0x00ff00, radius: 16, distance: 4000, speed: 0.008 }, { name: 'WASP-12b', color: 0x333333, radius: 150, distance: 6500, speed: 0.007 }
+    ];
+    const planetInfo = {
+        'Mercury': { diameter: 4879, dist: 57.9, orbit: 88, isExoplanet: 'No', type: 'Rocky' }, 'Venus': { diameter: 12104, dist: 108.2, orbit: 224.7, isExoplanet: 'No', type: 'Rocky' },
+        'Earth': { diameter: 12742, dist: 149.6, orbit: 365.2, isExoplanet: 'No', type: 'Rocky' }, 'Mars': { diameter: 6779, dist: 227.9, orbit: 687, isExoplanet: 'No', type: 'Rocky' },
+        'Jupiter': { diameter: 139822, dist: 778.6, orbit: 4331, isExoplanet: 'No', type: 'Gas Giant' }, 'Saturn': { diameter: 116460, dist: 1433.5, orbit: 10747, isExoplanet: 'No', type: 'Gas Giant' },
+        'Uranus': { diameter: 50724, dist: 2872.5, orbit: 30589, isExoplanet: 'No', type: 'Ice Giant' }, 'Neptune': { diameter: 49244, dist: 4495.1, orbit: 59800, isExoplanet: 'No', type: 'Ice Giant' },
+        'Kepler-186f': { diameter: 18000, dist: 5500, orbit: 130, isExoplanet: 'Yes', type: 'Super-Earth' }, 'WASP-12b': { diameter: 190000, dist: 7000, orbit: 1.09, isExoplanet: 'Yes', type: 'Hot Jupiter' },
+    };
+
+    planetData.forEach(pData => {
+        const planetGroup = new THREE.Object3D(); scene.add(planetGroup);
+        const geometry = new THREE.SphereGeometry(pData.radius, 32, 32);
+        const material = new THREE.MeshPhongMaterial({ color: pData.color, shininess: 30, specular: 0x333333 }); 
+        const planet = new THREE.Mesh(geometry, material);
+        planet.position.x = pData.distance;
+        planet.userData = { ...pData, ...planetInfo[pData.name] };
+        planet.name = pData.name; 
+        planetGroup.add(planet);
+        
+        const label = document.createElement('div');
+        label.className = 'planet-label'; label.textContent = pData.name; labelContainer.appendChild(label);
+        planets.push({ mesh: planet, group: planetGroup, speed: pData.speed * ORBITAL_SPEED_FACTOR, selfSpeed: pData.speed * 5 * ORBITAL_SPEED_FACTOR, label: label });
+        
+        if (pData.rings) {
+            const ringGeometry = new THREE.RingGeometry(pData.rings.inner, pData.rings.outer, 64);
+            ringGeometry.rotateX(Math.PI / 2.5);
+            const ringMaterial = new THREE.MeshBasicMaterial({ color: 0x5a5a5a, side: THREE.DoubleSide, transparent: true, opacity: 0.6 });
+            const rings = new THREE.Mesh(ringGeometry, ringMaterial);
+            planet.add(rings);
+        }
+    });
+    
+    // --- INTERACTION LOGIC ---
+    const raycaster = new THREE.Raycaster();
+    const mouse = new THREE.Vector2();
+    let intersectedObject = null;
+    const infoPanel = document.getElementById('info-panel');
+    const vector = new THREE.Vector3(); 
+
+    function onMouseMove(event) {
+        mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+        mouse.y = - (event.clientY / window.innerHeight) * 2 + 1;
+    }
+
+    // Function now updates the panel and correctly handles the "Distance from Sun/Star" label.
+    function updateInfoPanel(planetUserData) {
+        const format = (num) => num.toLocaleString('en-US', {maximumFractionDigits: 1});
+        document.getElementById('planet-name').textContent = planetUserData.name;
+        
+        // Find the specific strong element for the distance label and update its text
+        const distanceStrong = infoPanel.querySelector('p:nth-child(2) strong');
+        distanceStrong.textContent = 'Diameter:'; 
+        document.getElementById('planet-diameter').textContent = format(planetUserData.diameter);
+
+        const distStrong = infoPanel.querySelector('p:nth-child(3) strong');
+        // Update label text based on whether it's an exoplanet or not
+        distStrong.textContent = planetUserData.isExoplanet === 'No' ? 'Distance from Sun:' : 'Distance from Star:'; 
+        document.getElementById('planet-distance').textContent = format(planetUserData.dist);
+
+        document.getElementById('planet-orbit').textContent = format(planetUserData.orbit);
+        document.getElementById('planet-exoplanet').textContent = `${planetUserData.type} (${planetUserData.isExoplanet})`; 
+    }
+
+    // Function to show/hide all planet labels
+    function toggleLabels(visible) {
+        planets.forEach(p => {
+            p.label.style.display = visible ? 'block' : 'none';
+        });
+    }
+
+    function updateLabels() {
+        const width = window.innerWidth, height = window.innerHeight;
+        planets.forEach(p => {
+            p.mesh.updateWorldMatrix(true, false);
+            vector.setFromMatrixPosition(p.mesh.matrixWorld);
+            vector.project(camera);
+            const x = (vector.x * 0.5 + 0.5) * width;
+            const y = -(vector.y * 0.5 - 0.5) * height;
+            
+            p.label.style.left = `${x}px`;
+            p.label.style.top = `${y}px`;
+        });
+    }
+
+    // --- CINEMATIC INTRO ANIMATION ---
+    let introProgress = 0;
+    const introDuration = 4.0; 
+    let introComplete = false;
+
+    function easeInOutCubic(t) {
+        return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+    }
+
+    function updateIntroCamera(deltaTime) {
+        if (introComplete) return;
+        introProgress += deltaTime / introDuration;
+        if (introProgress >= 1.0) {
+            introProgress = 1.0;
+            introComplete = true;
+            camera.position.copy(finalIntroPos);
+            camera.lookAt(0, 0, 0);
+            document.body.style.overflowY = 'scroll';
+            return;
+        }
+        const t = easeInOutCubic(introProgress);
+        const startX = -3000, startY = 1500, startZ = 4000;
+        const endX = finalIntroPos.x, endY = finalIntroPos.y, endZ = finalIntroPos.z;
+        camera.position.x = startX + (endX - startX) * t;
+        camera.position.y = startY + (endY - startY) * t;
+        camera.position.z = startZ + (endZ - startZ) * t;
+        const orbitAngle = introProgress * Math.PI * 0.5;
+        const orbitRadius = 200 * (1 - t); 
+        camera.position.x += Math.cos(orbitAngle) * orbitRadius;
+        camera.position.z += Math.sin(orbitAngle) * orbitRadius;
+        camera.lookAt(0, 0, 0);
+    }
+    
+    // --- MAIN ANIMATION LOOP ---
+    let lastTime = performance.now();
+    let time = 0;
+
+    function animate() {
+        requestAnimationFrame(animate);
+        
+        const currentTime = performance.now();
+        const deltaTime = (currentTime - lastTime) / 1000; 
+        lastTime = currentTime;
+        time += 0.01;
+
+        if (!introComplete) {
+            updateIntroCamera(deltaTime);
+        } else if (!isInteractive) {
+            // Gentle camera float for the static home screen view
+            camera.position.x = finalIntroPos.x + Math.sin(time * 0.2) * 50;
+            camera.position.y = finalIntroPos.y + Math.cos(time * 0.25) * 30;
+            camera.position.z = finalIntroPos.z + Math.sin(time * 0.3) * 60;
+            camera.lookAt(0, 0, 0);
+        }
+
+        planets.forEach(p => {
+            p.group.rotation.y += p.speed * 0.1;
+            p.mesh.rotation.y += p.selfSpeed * 0.1;
+        });
+        
+        const pulse = 1.0 + Math.sin(time * 0.8) * 0.025;
+        sun.scale.setScalar(pulse);
+        sun.rotation.y += 0.0004;
+        
+        const scales = [1.03, 1.08, 1.15, 1.25, 1.4, 1.6];
+        const speeds = [0.0012, -0.001, 0.0008, -0.0006, 0.0005, -0.0003];
+        sunLayers.forEach((layer, i) => {
+            layer.scale.setScalar(scales[i] * pulse);
+            layer.rotation.y += speeds[i];
+            layer.rotation.z += speeds[i] * 0.5;
+        });
+        
+        pointLight.intensity = 4.5 + Math.sin(time * 0.7) * 0.6;
+
+        if (isInteractive) {
+            raycaster.setFromCamera(mouse, camera);
+            const intersects = raycaster.intersectObjects(planets.map(p => p.mesh));
+
+            if (intersects.length > 0) {
+                const newIntersected = intersects[0].object;
+                if (intersectedObject !== newIntersected) {
+                    if (intersectedObject) {
+                        intersectedObject.material.emissive.setHex(0x000000);
+                    }
+                    intersectedObject = newIntersected;
+                    intersectedObject.material.emissive.setHex(0x00cccc); 
+                    updateInfoPanel(intersectedObject.userData); 
+                }
+                // Show the info panel (absolute position)
+                infoPanel.style.display = 'block'; 
+            } else {
+                if (intersectedObject) {
+                    intersectedObject.material.emissive.setHex(0x000000);
+                }
+                intersectedObject = null;
+                // Hide the info panel (absolute position)
+                infoPanel.style.display = 'none'; 
+            }
+
+            controls.update();
+        }
+        
+        updateLabels(); 
+        renderer.render(scene, camera);
+    }
+    
+    // --- EVENT LISTENERS ---
+    window.addEventListener('resize', () => {
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+
+    window.addEventListener('mousemove', onMouseMove, false);
+
+    const exploreBtn = document.getElementById('explore-btn');
+    const backBtn = document.getElementById('back-btn');
+    const mainContentSection = document.getElementById('main-content-section');
+    
+    // Get references to the elements we want to hide/show individually
+    const topLeft = document.querySelector('.top-left');
+    const mainNav = document.getElementById('main-nav');
+    const topRight = document.querySelector('.top-right'); // <-- ADDED REFERENCE FOR FIXING OPACITY
+    
+    // **EXPLORE BUTTON LOGIC (Hide UI, Enter Interactive Mode)**
+    exploreBtn.addEventListener('click', () => {
+        isInteractive = true;
+        controls.enabled = true; 
+        
+        // --- FIX 1: HIDE STATIC INFO PANEL AND MOVE IT TO BODY (Ensures Earth data disappears) ---
+        infoPanel.classList.remove('static-info-panel');
+        infoPanel.style.display = 'none';
+        
+        if (infoPanel.parentElement === mainContentSection) {
+            mainContentSection.removeChild(infoPanel);
+            document.body.appendChild(infoPanel);
+        }
+        
+        // --- FIX 2: Only hide logo, nav, and explore button, KEEP BACK button visible ---
+        topLeft.style.opacity = '0';
+        topLeft.style.pointerEvents = 'none';
+        mainNav.style.opacity = '0';
+        mainNav.style.pointerEvents = 'none';
+        
+        // **CRITICAL FIX for invisible button:** Explicitly set parent opacity to 1
+        topRight.style.opacity = '1'; 
+        topRight.style.pointerEvents = 'all';
+
+        // Button swap: Hide Explore, Show Back
+        exploreBtn.style.display = 'none'; 
+        backBtn.style.display = 'block'; 
+        
+        // Hide planet labels
+        toggleLabels(false);
+        
+        // Disable scroll in interactive mode to focus on 3D
+        document.body.style.overflowY = 'hidden';
+    });
+    
+    // **BACK BUTTON LOGIC (Show UI, Return to Home)**
+    backBtn.addEventListener('click', () => {
+        isInteractive = false;
+        controls.enabled = false; 
+        
+        // Reset camera and controls
+        camera.position.copy(finalIntroPos);
+        camera.lookAt(0, 0, 0);
+        controls.reset();
+        
+        // --- Restore visibility of logo, nav, and explore button ---
+        topLeft.style.opacity = '1';
+        topLeft.style.pointerEvents = 'all';
+        mainNav.style.opacity = '1';
+        mainNav.style.pointerEvents = 'all';
+
+        // Button swap: Show Explore, Hide Back
+        backBtn.style.display = 'none'; 
+        exploreBtn.style.display = 'block'; 
+        
+        // Show planet labels
+        toggleLabels(true);
+
+        // INFO PANEL: Move it back to the static content section and apply the static class
+        if (infoPanel.parentElement === document.body) {
+            document.body.removeChild(infoPanel);
+            mainContentSection.prepend(infoPanel); 
+            infoPanel.classList.add('static-info-panel'); // Re-apply static/default styling
+        }
+        
+        // Re-enable scroll
+        document.body.style.overflowY = 'scroll';
+
+        // Ensure any highlighted planet is reset
+        if (intersectedObject) {
+            intersectedObject.material.emissive.setHex(0x000000);
+            intersectedObject = null;
+        }
+    });
+
+    // **NAVIGATION LINK LOGIC**
+    document.querySelectorAll('#main-nav a').forEach(link => {
+        link.addEventListener('click', (e) => {
+            // If it's the home link, we only scroll up. Others are external HTML files.
+            if (e.target.getAttribute('data-section') === 'home') {
+                e.preventDefault();
+                // Scroll to the top when 'Home' is clicked if not in interactive mode
+                if (!isInteractive) {
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                }
+            }
+            // Add/remove active class (for visual feedback on current page)
+            document.querySelectorAll('.nav-link').forEach(nav => nav.classList.remove('active'));
+            e.target.classList.add('active');
+        });
+    });
+
+    // Initial setup:
+    toggleLabels(true); 
+    animate();
+    </script>
+</body>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500&display=swap" rel="stylesheet">
+
+
+<footer class="footer">
+  <div class="footer-container">
+    <div class="footer-left">
+      <p>&copy; 2025 NASA Space Apps Challenge</p>
+    </div>
+    <div class="footer-right">
+      <a href="https://github.com/Prathamesh603/Nasa-Space-App-Hunting-Exoplanets-" target="_blank" aria-label="Visit Prathamesh's GitHub profile">
+        <img src="https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/github.svg" alt="GitHub" class="footer-icon">
+      </a>
+      <!-- <a href="https://www.linkedin.com/in/prathamesh-rajput-5364802b6/" target="_blank" aria-label="Visit Prathamesh's LinkedIn profile">
+        <img src="https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/linkedin.svg" alt="LinkedIn" class="footer-icon">
+      </a> -->
+    </div>
+  </div>
+</footer>
+
+<style>
+/* Define a color palette using CSS variables for easy management */
+:root {
+  --footer-bg: rgba(10, 25, 47, 0.8); /* Dark, semi-transparent navy blue */
+  --footer-text: #e6f1ff; /* Light blueish-white for text */
+  --footer-icon-color: #ffffff; /* Pure white for icons */
+}
+
+.footer {
+  /* Use the variable for the background */
+  background: var(--footer-bg);
+  /* This creates the "glass" effect by blurring content behind the footer */
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px); /* For Safari support */
+  
+  padding: 1rem 2rem; /* Using rem for scalable sizing */
+  color: var(--footer-text);
+  font-family: 'Inter', sans-serif; /* Cleaner font declaration */
+  
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  
+  /* Add a subtle top border for definition */
+  border-top: 1px solid rgba(7, 17, 222, 0.1);
+}
+
+.footer-container {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  max-width: 1100px; /* Slightly wider for modern screens */
+}
+
+.footer-left p {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 400; /* Regular weight can look cleaner */
+}
+
+.footer-right {
+  display: flex;
+  align-items: center;
+  gap: 1rem; /* Use gap for consistent spacing between icons */
+}
+
+.footer-icon {
+  width: 24px;
+  height: 24px;
+  /* A simpler filter to turn the icons white */
+  filter: invert(1);
+  opacity: 0.8; /* Slightly muted icons look more professional */
+  transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+.footer-right a:hover .footer-icon {
+  opacity: 1; /* Full opacity on hover */
+  transform: scale(1.15) translateY(-2px); /* Add a subtle lift effect */
+}
+
+/* --- Responsive Design for Mobile --- */
+@media (max-width: 600px) {
+  .footer-container {
+    flex-direction: column; /* Stack items vertically on small screens */
+    gap: 1rem; /* Add space between the text and the icons */
+  }
+
+  .footer-left {
+    order: 2; /* Move the copyright text below the icons */
+  }
+
+  .footer-right {
+    order: 1; /* Move icons to the top */
+  }
+}
+</style>
+</html>
